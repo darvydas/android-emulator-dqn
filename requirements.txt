@@ -1,0 +1,6 @@
+Appium-Python-Client
+tensorflow[and-cuda]
+lxml
+matplotlib
+graphviz
+transformers

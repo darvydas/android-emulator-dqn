@@ -2,7 +2,7 @@
 import datetime
 import time
 from android_env import AndroidEnv #, extract_features_from_tree
-from dqn_agent import DQNAgent
+from agent.dqn_agent import DQNAgent
 import numpy as np
 import matplotlib.pyplot as plt
 from logger.logger import Logger

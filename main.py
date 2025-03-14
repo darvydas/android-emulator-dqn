@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 from logger.logger import Logger
 
 from tools.graphviz import visualize_q_tree_graphviz
+from tools.dom_visualizer import DOMVisualizer
+import config as cfg
+
 
 import tensorflow as tf
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
@@ -36,7 +39,11 @@ if __name__ == "__main__":
     action_size = env.action_size
     # Initialize DQN agent
     # agent = DQNAgent(state_size, action_size, load_file='logs/20250307_105733_model/20250307_151820dqn_model_episode_200.weights.h5')
-    agent = DQNAgent(state_size, action_size)
+    agent = DQNAgent(state_size, action_size, load_file="logs/20250314_000237_model_per_sumtree/20250314_074208dqn_model_episode_248.weights.h5", epsilon=0.14)
+
+    # Agent step visualization
+    if cfg.DEMO:
+        visualizer = DOMVisualizer(env)
 
     # Hyperparameters
     episodes = 1000  # Total number of training episodes
@@ -54,6 +61,9 @@ if __name__ == "__main__":
         state = env.reset() # Reset environment at the start of each episode
 
         episode_reward = 0
+        if cfg.DEMO:
+            visualizer.total_reward = 0
+
         loss = 0
         step_count = 0
         done = False
@@ -64,6 +74,21 @@ if __name__ == "__main__":
             action, action_params = agent.act(state, agent.epsilon, available_actions) # agent filters actions from env
 
             next_state, reward, done, info = env.step(action, action_params)  # Environment steps
+
+            # Update the visualizer with the action and reward
+            if cfg.DEMO:
+                visualizer.update_status(action, reward)
+                # Update visualization and handle pausing
+                viz_result = None
+                while viz_result is None:  # Keep updating until we're no longer paused
+                    viz_result = visualizer.update_and_draw()
+                    if viz_result is False:  # Window was closed
+                        done = True
+                        break
+                    time.sleep(0.05)  # Small delay to prevent CPU hogging in the pause loop
+
+                if not viz_result:  # Window was closed
+                    break
 
             # Agent store experience
             loss += agent.update(state, action, reward, next_state, done)
@@ -124,6 +149,9 @@ if __name__ == "__main__":
         # Decay epsilon
         agent.decay_epsilon()
 
+
+    if cfg.DEMO:
+        visualizer.close()
     env.close()  # Close the environment after training
     print(f"Training finished. Time since start: {logger.elapsed_time()}")
     logger.append_move_log(f"Training finished.")

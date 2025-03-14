@@ -2,7 +2,6 @@
 import random
 import numpy as np
 import tensorflow as tf
-from collections import deque
 from agent.replay_buffer import PrioritizedReplayBuffer
 
 

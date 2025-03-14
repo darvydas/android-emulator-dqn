@@ -1,37 +1,4 @@
 import graphviz
-from lxml import etree
-import numpy as np # Make sure numpy is imported
-
-# in main.py or a new visualization file
-
-from lxml import etree # if you're using lxml
-# Assuming you have your XML tree in a variable called 'dom_tree' and your DQNAgent instance called 'agent'
-
-def visualize_q_tree(root_node, agent, get_node_features, indent=""):
-    """
-    Recursively visualizes the XML tree and Q-values for each node.
-
-    Args:
-        root_node: The root node of the lxml tree.
-        agent: Your DQNAgent instance.
-        get_node_features: A function that takes an lxml node and returns its state features (8-feature vector).
-        indent: Indentation string for tree-like output.
-    """
-    if root_node is None:
-        return
-
-    node_features = get_node_features(root_node) # Assuming you have a function to extract features
-    q_values = agent.get_q_values_for_state(node_features)
-
-    node_label = f"<{root_node.tag}>"
-    if root_node.text and root_node.text.strip(): # Add text content if it's not just whitespace
-        node_label += f"  Text: '{root_node.text.strip()}'"
-
-    print(indent + node_label)
-    print(indent + "  Q-values:", q_values) # Display Q-values
-
-    for child in root_node:
-        visualize_q_tree(child, agent, get_node_features, indent + "  ") # Deeper indent for children
 
 def visualize_q_tree_graphviz(root_node, q_values_for_state, get_node_features, filename="q_tree_visualization"):
     """
@@ -76,7 +43,3 @@ def visualize_q_tree_graphviz(root_node, q_values_for_state, get_node_features, 
     dot.render(filename, view=False) # Generate PDF (or other format) and don't immediately open
 
     print(f"Q-value tree visualization saved to {filename}.pdf")
-
-# --- Example Usage (in your main.py after loading model and env) ---
-# Make sure you have your agent, env.current_dom, and your feature extraction function
-# visualize_q_tree_graphviz(env.current_dom.getroot(), agent, extract_node_features_example, "q_value_tree")

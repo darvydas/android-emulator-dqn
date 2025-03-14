@@ -10,10 +10,8 @@ from selenium.webdriver.common.actions.pointer_actions import PointerActions
 from appium.options.android import UiAutomator2Options
 from selenium.common.exceptions import NoSuchElementException
 import numpy as np
-from collections import deque
 import tensorflow as tf
 from lxml import etree
-import base64
 from tools.bert import tokenize_string
 
 class AndroidEnv:

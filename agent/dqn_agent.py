@@ -1,4 +1,5 @@
 # dqn_agent.py
+import os
 import random
 import numpy as np
 import tensorflow as tf
@@ -10,7 +11,7 @@ class DQNAgent:
                 learning_rate = 0.0001,
                 gamma = 0.98,
                 epsilon = 1.0,
-                epsilon_decay = 0.992,
+                epsilon_decay = 0.995,
                 epsilon_min = 0.01,
                 replay_memory_size=20000,
                 replay_start_size = 512,
@@ -172,3 +173,24 @@ class DQNAgent:
         """Returns target Q-values for a given state."""
         q_values = self.target_model.predict(np.expand_dims(state, axis=0), verbose=0)
         return q_values[0] # Return the Q-values array
+
+    def save_experience(self, filepath):
+        """
+        Save the agent's experience replay buffer to disk.
+
+        Args:
+            filepath: Path where the experience buffer will be saved
+        """
+        self.memory.save_buffer(filepath)
+
+    def load_experience(self, filepath):
+        """
+        Load the agent's experience replay buffer from disk.
+
+        Args:
+            filepath: Path to the saved experience buffer
+        """
+        if os.path.exists(filepath):
+            self.memory = PrioritizedReplayBuffer.load_buffer(filepath)
+        else:
+            print(f"No experience buffer found at {filepath}")

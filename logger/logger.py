@@ -39,8 +39,8 @@ class Logger():
     textstr = '\n'.join((
         r'learning_rate=%.4f' % (model_hyperparameters['learning_rate'], ),
         r'gamma=%.2f' % (model_hyperparameters['gamma'], ),
-        r'epsilon=%.2f' % (model_hyperparameters['epsilon'], ),
-        r'epsilon_decay=%.2f' % (model_hyperparameters['epsilon_decay'], ),
+        r'epsilon=%.3f' % (model_hyperparameters['epsilon'], ),
+        r'epsilon_decay=%.3f' % (model_hyperparameters['epsilon_decay'], ),
         r'epsilon_min=%.2f' % (model_hyperparameters['epsilon_min'], ),
         r'replay_memory_size=%d' % (model_hyperparameters['replay_memory_size'], ),
         r'replay_start_size=%d' % (model_hyperparameters['replay_start_size'], ),

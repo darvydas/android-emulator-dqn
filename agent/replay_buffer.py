@@ -1,3 +1,5 @@
+import os
+import pickle
 from agent.sumtree import SumTree
 import random
 import numpy as np
@@ -83,3 +85,68 @@ class PrioritizedReplayBuffer:
     def __len__(self):
         """Return the current size of the buffer"""
         return self.tree.n_entries
+
+
+    def save_buffer(self, filepath):
+        """
+        Save the replay buffer to disk.
+
+        Args:
+            filepath: Path where the buffer will be saved
+        """
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+        # Prepare data to save
+        buffer_data = {
+            'tree': self.tree.tree,
+            'data': self.tree.data,
+            'n_entries': self.tree.n_entries,
+            'position': self.tree.position,
+            'alpha': self.alpha,
+            'beta': self.beta,
+            'beta_increment': self.beta_increment,
+            'epsilon': self.epsilon,
+            'max_priority': self.max_priority,
+            'capacity': self.capacity
+        }
+
+        # Save to disk
+        with open(filepath, 'wb') as f:
+            pickle.dump(buffer_data, f)
+
+        print(f"Replay buffer saved to {filepath}")
+
+    @classmethod
+    def load_buffer(cls, filepath):
+        """
+        Load a replay buffer from disk.
+
+        Args:
+            filepath: Path to the saved buffer
+
+        Returns:
+            A PrioritizedReplayBuffer instance with the loaded data
+        """
+        # Load data from disk
+        with open(filepath, 'rb') as f:
+            buffer_data = pickle.load(f)
+
+        # Create a new buffer with the same parameters
+        buffer = cls(
+            capacity=buffer_data['capacity'],
+            alpha=buffer_data['alpha'],
+            beta=buffer_data['beta'],
+            beta_increment=buffer_data['beta_increment'],
+            epsilon=buffer_data['epsilon']
+        )
+
+        # Restore the buffer state
+        buffer.tree.tree = buffer_data['tree']
+        buffer.tree.data = buffer_data['data']
+        buffer.tree.n_entries = buffer_data['n_entries']
+        buffer.tree.position = buffer_data['position']
+        buffer.max_priority = buffer_data['max_priority']
+
+        print(f"Replay buffer loaded from {filepath} with {buffer.tree.n_entries} entries")
+        return buffer

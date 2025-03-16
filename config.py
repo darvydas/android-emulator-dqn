@@ -1,1 +1,1 @@
-DEMO = True
+DEMO = False

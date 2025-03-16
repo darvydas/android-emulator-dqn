@@ -1,5 +1,6 @@
 # main.py
 import datetime
+import os
 import time
 from android_env import AndroidEnv #, extract_features_from_tree
 from agent.dqn_agent import DQNAgent
@@ -34,12 +35,24 @@ if __name__ == "__main__":
 
     # Initialize environment
     env = AndroidEnv(desired_caps, logger)
-    # Initialize state and action size
+
     state_size = env.state_size
     action_size = env.action_size
+
+    # Path for saving/loading experience buffer
+    experience_buffer_path = "logs/20250315_141420_model_20250315_074841_epsil_0.40/20250316_011632_experience_buffer_290.pkl" # "logs/experience_buffer.pkl"
+
     # Initialize DQN agent
-    # agent = DQNAgent(state_size, action_size, load_file='logs/20250307_105733_model/20250307_151820dqn_model_episode_200.weights.h5')
-    agent = DQNAgent(state_size, action_size, load_file="logs/20250314_000237_model_per_sumtree/20250314_074208dqn_model_episode_248.weights.h5", epsilon=0.14)
+    model_path = "logs/20250315_141420_model_20250315_074841_epsil_0.40/20250316_011623dqn_model_episode_290.weights.h5"
+    agent = DQNAgent(state_size, action_size, load_file=model_path, epsilon=0.094)
+    # agent = DQNAgent(state_size, action_size)
+
+    # Load experience buffer if it exists
+    if os.path.exists(experience_buffer_path):
+        print(f"Loading experience buffer from {experience_buffer_path}")
+        agent.load_experience(experience_buffer_path)
+    else:
+        print("No saved experience buffer found. Starting with a fresh buffer.")
 
     # Agent step visualization
     if cfg.DEMO:
@@ -48,7 +61,8 @@ if __name__ == "__main__":
     # Hyperparameters
     episodes = 1000  # Total number of training episodes
     target_update_interval = 10  # Episodes between target network updates (for stability)
-    save_interval = 1  # Episodes between saving model weights and visualizations
+    save_interval = 5  # Episodes between saving model weights and visualizations
+    experience_save_interval = 5  # Save every 10 episodes
     max_steps = 300  # Maximum steps per episode to prevent infinite loops
 
     cumulative_rewards = []
@@ -145,6 +159,16 @@ if __name__ == "__main__":
                                       agent.get_target_q_values_for_state,
                                       env.extract_features_from_tree,
                                       f"{logger.model_directory}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}target_q_value_tree_{episode + 1}")
+
+            # Save experience buffer periodically
+            if (episode+1) % experience_save_interval == 0:
+                # Use a timestamped name to avoid overwriting
+                buffer_save_path = f"{logger.model_directory}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_experience_buffer_{episode + 1}.pkl"
+                agent.save_experience(buffer_save_path)
+
+                # Also save to the default location (overwrite)
+                # agent.save_experience(experience_buffer_path)
+                # print(f"Experience buffer saved after episode {episode+1}")
 
         # Decay epsilon
         agent.decay_epsilon()

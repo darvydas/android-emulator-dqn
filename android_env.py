@@ -160,7 +160,7 @@ class AndroidEnv:
                     if self._current_node.getprevious() is not None:
                         available_action_space.append(index)
                 elif action_name == "move_to_parent":
-                    if self._current_node.getparent() is not None and self._current_node.getparent().tag != 'hierarchy':
+                    if self._current_node.getparent() is not None and self._current_node.getparent().tag != 'hierarchy' and self._current_node.getprevious() is None:
                         available_action_space.append(index)
                 elif action_name == "noop":
                     available_action_space.append(index)
@@ -172,7 +172,7 @@ class AndroidEnv:
     def step(self, action_index, action_params=None):
         """Executes action, returns next state (Accessibility Tree), reward, done, info."""
         action_name = self.action_space[action_index]
-        reward = -0.1
+        reward = 0
         done = False
         info = {}
         error = False
@@ -225,6 +225,7 @@ class AndroidEnv:
                 reward = -10
                 error = True
                 print(f"Error: Unknown action: {action_name}")
+                self.logger.append_move_log(f"Error: Unknown action: {action_name}")
 
             next_state = self.get_state()
             # self.logger.append_move_log(f'New state features: {next_state}')
@@ -258,6 +259,8 @@ class AndroidEnv:
 
         except Exception as e:
             print(f"Error executing action: {action_name}, Error: {e}")
+            self.logger.append_move_log(f"Error executing action: {action_name}, Error: {e}")
+
             reward = -10
             next_state = self.get_state()
             done = True
@@ -395,13 +398,16 @@ class AndroidEnv:
 
     def calculate_xpath_similarity_reward(self):
         """
-        Calculate reward based on XPath similarity and node attributes
+        Calculate reward based on XPath navigation:
+        - Positive reward ONLY when current path is on the correct path with at most 3 nodes left to target
+        - No reward (0) when deviating by exactly 1 block or when on the correct path but far from target
+        - Negative reward proportional to deviation when off by 2+ blocks
         """
         # Split paths into components
         current_components = self._current_node_xpath.split('/')
         target_components = self._target_node_xpath.split('/')
 
-        # Calculate path similarity
+        # Calculate the common prefix length
         common_depth = 0
         for i in range(min(len(current_components), len(target_components))):
             if current_components[i] == target_components[i]:
@@ -409,21 +415,96 @@ class AndroidEnv:
             else:
                 break
 
-        # Base reward for path similarity
-        max_depth = max(len(current_components), len(target_components))
-        path_reward = 2.0 * common_depth / max_depth  # Scaled between 0-2
+        # Check if current path is a valid prefix of target path
+        is_valid_prefix = common_depth == len(current_components) and common_depth <= len(target_components)
 
-        # Distance penalty - penalize being far from the target in tree
-        remaining_distance = len(target_components) - common_depth
-        distance_penalty = -0.1 * remaining_distance  # Small penalty for being far
+        # Calculate deviating blocks (components after the common prefix)
+        deviating_blocks = len(current_components) - common_depth
 
-        total_reward = path_reward + distance_penalty
+        # Determine reward based on the path alignment
+        if is_valid_prefix:
+            # Calculate how many more nodes needed to reach the target
+            remaining_nodes = len(target_components) - common_depth
 
-        # Add debugging info
-        self.logger.append_move_log(f"Similarity reward: {total_reward:.2f} (Path: {path_reward:.2f}, Dist: {distance_penalty:.2f})")
+            if remaining_nodes <= 3:
+                # We're on one of the last 3 nodes to the target or at the target
+                # Scale reward based on proximity to target (higher closer to target)
+                if remaining_nodes == 0:
+                    # We've reached the target
+                    reward = 2.0
+                elif remaining_nodes == 1:
+                    # One node away from target
+                    reward = 1.5
+                elif remaining_nodes == 2:
+                    # Two nodes away from target
+                    reward = 1.0
+                else:  # remaining_nodes == 3
+                    # Three nodes away from target
+                    reward = 0
 
-        return total_reward
+                self.logger.append_move_log(f"Path reward: {reward:.2f} ({remaining_nodes} nodes from target)")
+            else:
+                # We're on the correct path but more than 3 nodes from target
+                reward = 0.0
+                self.logger.append_move_log(f"Neutral reward: {reward:.2f} (On path but {remaining_nodes} nodes from target)")
+        elif deviating_blocks == 1:
+            # Exactly 1 deviating block - neutral reward
+            reward = 0.0
+            self.logger.append_move_log(f"Neutral reward: {reward:.2f} (1 deviating block)")
+        else:
+            # 2 or more deviating blocks - negative reward
+            distance_penalty = -0.2 * deviating_blocks
+            reward = distance_penalty
+            self.logger.append_move_log(f"Path penalty: {reward:.2f} ({deviating_blocks} deviating blocks)")
 
+        return reward
+    # def calculate_xpath_similarity_reward(self):
+    #     """
+    #     Calculate reward based on XPath navigation:
+    #     - Positive reward when current path is on the correct path toward target
+    #     - No reward (0) when deviating by exactly 1 block
+    #     - Negative reward proportional to deviation when off by 2+ blocks
+    #     """
+    #     # Split paths into components
+    #     current_components = self._current_node_xpath.split('/')
+    #     target_components = self._target_node_xpath.split('/')
+
+    #     # Calculate the common prefix length
+    #     common_depth = 0
+    #     for i in range(min(len(current_components), len(target_components))):
+    #         if current_components[i] == target_components[i]:
+    #             common_depth += 1
+    #         else:
+    #             break
+
+    #     # Check if current path is a valid prefix of target path
+    #     is_valid_prefix = common_depth == len(current_components) and common_depth <= len(target_components)
+
+    #     # Calculate deviating blocks (components after the common prefix)
+    #     deviating_blocks = len(current_components) - common_depth
+
+    #     # Determine reward based on the path alignment
+    #     if is_valid_prefix:
+    #         # Current path is a valid prefix of target path
+    #         # Calculate progress (how far along the correct path)
+    #         progress = common_depth / len(target_components)
+    #         reward = 2.0 * progress  # Scaled between 0-2
+
+    #         self.logger.append_move_log(f"Path reward: {reward:.2f} (Valid prefix, progress: {progress:.2f})")
+    #     elif deviating_blocks == 1:
+    #         # Exactly 1 deviating block - neutral reward
+    #         reward = 0.0
+
+    #         self.logger.append_move_log(f"Neutral reward: {reward:.2f} (1 deviating block)")
+    #     else:
+    #         # 2 or more deviating blocks - negative reward
+    #         distance_penalty = -0.2 * deviating_blocks
+    #         reward = distance_penalty
+
+    #         self.logger.append_move_log(f"Path penalty: {reward:.2f} ({deviating_blocks} deviating blocks)")
+
+    #     return reward
+# ----------------------------------------------------------------------
     def get_bounds(self, xml_element):
         """Gets the bounds (rect) of an element from its XML representation."""
         bounds_str = xml_element.get('bounds')
@@ -529,9 +610,6 @@ class AndroidEnv:
             return None # No locator info
 
         return locator
-
-
-
 
     def _tap_element(self, locator):
         """Taps on a UI element based on locator."""
@@ -656,7 +734,7 @@ class AndroidEnv:
         except Exception as e:
             print(f"Error finding element with locator: {locator} within current node, Error: {e}")
             return None
-
+# ----------------------------------------------------------------------
 
 
 

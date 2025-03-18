@@ -40,12 +40,12 @@ if __name__ == "__main__":
     action_size = env.action_size
 
     # Path for saving/loading experience buffer
-    experience_buffer_path = "logs/20250315_141420_model_20250315_074841_epsil_0.40/20250316_011632_experience_buffer_290.pkl" # "logs/experience_buffer.pkl"
+    experience_buffer_path = "" #"logs/20250315_141420_model_20250315_074841_epsil_0.40/20250316_011632_experience_buffer_290.pkl" # "logs/experience_buffer.pkl"
 
     # Initialize DQN agent
-    model_path = "logs/20250315_141420_model_20250315_074841_epsil_0.40/20250316_011623dqn_model_episode_290.weights.h5"
-    agent = DQNAgent(state_size, action_size, load_file=model_path, epsilon=0.094)
-    # agent = DQNAgent(state_size, action_size)
+    # model_path = "logs/20250315_141420_model_20250315_074841_epsil_0.40/20250316_011623dqn_model_episode_290.weights.h5"
+    # agent = DQNAgent(state_size, action_size, load_file=model_path, epsilon=0.094)
+    agent = DQNAgent(state_size, action_size)
 
     # Load experience buffer if it exists
     if os.path.exists(experience_buffer_path):
